@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEXUS Weather — Futuristic Forecast</title>
+  <meta name="description" content="Next-generation weather intelligence. Real-time data, air quality, hourly charts, and predictive forecasts." />
+  <meta name="theme-color" content="#010812" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── ANIMATED BACKGROUND ─────────────────────────────── -->
+  <div class="scene" id="scene">
+    <div class="scene-gradient" id="sceneGradient"></div>
+    <canvas class="scene-canvas" id="sceneCanvas"></canvas>
+    <div class="scanlines"></div>
+    <div class="scene-overlay"></div>
+  </div>
+
+  <!-- ── HUD GRID LINES ──────────────────────────────────── -->
+  <div class="hud-grid" id="hudGrid">
+    <div class="hud-corner top-left"></div>
+    <div class="hud-corner top-right"></div>
+    <div class="hud-corner bot-left"></div>
+    <div class="hud-corner bot-right"></div>
+  </div>
+
+  <!-- ── MAIN APP ────────────────────────────────────────── -->
+  <div class="nexus-app" id="nexusApp">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 40 40" width="36" height="36">
+            <circle cx="20" cy="20" r="18" fill="none" stroke="url(#brandGrad)" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="12" fill="none" stroke="url(#brandGrad)" stroke-width="1" opacity="0.5"/>
+            <circle cx="20" cy="20" r="5" fill="url(#brandGrad)"/>
+            <line x1="20" y1="2" x2="20" y2="8" stroke="url(#brandGrad)" stroke-width="1.5"/>
+            <line x1="20" y1="32" x2="20" y2="38" stroke="url(#brandGrad)" stroke-width="1.5"/>
+            <line x1="2" y1="20" x2="8" y2="20" stroke="url(#brandGrad)" stroke-width="1.5"/>
+            <line x1="32" y1="20" x2="38" y2="20" stroke="url(#brandGrad)" stroke-width="1.5"/>
+            <defs>
+              <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00f5ff"/>
+                <stop offset="100%" stop-color="#7b00ff"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NEXUS</span>
+          <span class="brand-sub">WEATHER INTELLIGENCE</span>
+        </div>
+      </div>
+
+      <div class="topbar-center">
+        <div class="search-shell" id="searchShell">
+          <div class="search-bar">
+            <svg class="s-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="searchInput" class="s-input" placeholder="SCAN LOCATION..." autocomplete="off" spellcheck="false" />
+            <button class="s-clear" id="searchClear">✕</button>
+          </div>
+          <div class="suggestions-panel" id="suggestionsPanel"></div>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="live-clock" id="liveClock">--:-- --</div>
+        <button class="hud-btn unit-toggle" id="unitToggle">
+          <span id="unitC" class="active">°C</span>/<span id="unitF">°F</span>
+        </button>
+        <button class="hud-btn icon-btn" id="locationBtn" title="Use my location">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>
+            <circle cx="12" cy="12" r="8" stroke-width="1" opacity="0.5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- LOADING -->
+    <div class="nexus-loading" id="nexusLoading">
+      <div class="loader-rings">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <div class="loader-pulse"></div>
+      </div>
+      <div class="loader-text">
+        <span class="loader-label">INITIALIZING NEXUS</span>
+        <span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+      </div>
+      <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
+    </div>
+
+    <!-- ERROR -->
+    <div class="nexus-error" id="nexusError">
+      <div class="error-hex">⚠</div>
+      <div class="error-title">SIGNAL LOST</div>
+      <div class="error-msg" id="errorMsg">Connection failed.</div>
+      <button class="hud-action-btn" id="retryBtn">RETRY SCAN</button>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <main class="dashboard" id="dashboard">
+
+      <!-- ── ROW 1: HERO ──────────────────────────────────── -->
+      <section class="hero-panel panel">
+        <div class="hero-left">
+          <div class="location-badge">
+            <span class="loc-dot"></span>
+            <span class="loc-name" id="cityName">—</span>
+          </div>
+          <div class="loc-sub" id="countryDate">—</div>
+          <div class="condition-badge" id="conditionBadge">
+            <span class="cond-icon" id="condIcon">—</span>
+            <span class="cond-label" id="condLabel">—</span>
+          </div>
+          <div class="smart-advisory" id="smartAdvisory">
+            <span class="advisory-icon">💡</span>
+            <span class="advisory-text" id="advisoryText">—</span>
+          </div>
+        </div>
+
+        <div class="hero-center">
+          <div class="mega-temp">
+            <span class="mega-value" id="tempValue">--</span>
+            <span class="mega-unit" id="tempUnit">°C</span>
+          </div>
+          <div class="temp-range" id="tempRange">
+            <span class="range-high">↑ <span id="tempHigh">--</span>°</span>
+            <span class="range-low">↓ <span id="tempLow">--</span>°</span>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="weather-orb" id="weatherOrb">
+            <div class="orb-inner" id="orbInner">
+              <div class="orb-icon" id="orbIcon">🌤</div>
+            </div>
+            <div class="orb-ring orb-r1"></div>
+            <div class="orb-ring orb-r2"></div>
+            <div class="orb-ring orb-r3"></div>
+          </div>
+        </div>
+
+        <!-- Sun arc tracker -->
+        <div class="sun-arc-container" id="sunArcContainer">
+          <svg class="sun-arc-svg" id="sunArcSvg" viewBox="0 0 300 100" preserveAspectRatio="xMidYMax meet">
+            <defs>
+              <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.3"/>
+                <stop offset="50%" stop-color="#ffd700" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#ff6b9d" stop-opacity="0.3"/>
+              </linearGradient>
+            </defs>
+            <path d="M 15 95 Q 150 5 285 95" fill="none" stroke="url(#arcGrad)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle class="sun-dot" id="sunDot" cx="150" cy="50" r="6" fill="#ffd700"/>
+            <text x="15" y="92" class="arc-label" id="sunriseLabel">--</text>
+            <text x="240" y="92" class="arc-label" id="sunsetLabel">--</text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ── ROW 2: STATS GRID ───────────────────────────── -->
+      <section class="stats-grid">
+
+        <!-- Feels Like -->
+        <div class="stat-panel panel" id="feelsLikePanel">
+          <div class="sp-label">FEELS LIKE</div>
+          <div class="sp-value" id="feelsLike">--</div>
+          <div class="sp-sub" id="feelsDesc">—</div>
+          <div class="sp-icon">🌡</div>
+        </div>
+
+        <!-- Humidity Gauge -->
+        <div class="stat-panel panel gauge-panel">
+          <div class="sp-label">HUMIDITY</div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 80 80">
+              <circle class="gauge-track" cx="40" cy="40" r="30" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/>
+              <circle class="gauge-fill humidity-fill" id="humidityGauge" cx="40" cy="40" r="30"
+                fill="none" stroke="url(#humGrad)" stroke-width="6"
+                stroke-dasharray="188.4" stroke-dashoffset="188.4"
+                stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              <defs>
+                <linearGradient id="humGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#00b4d8"/>
+                  <stop offset="100%" stop-color="#0077b6"/>
+                </linearGradient>
+              </defs>
+              <text x="40" y="44" text-anchor="middle" class="gauge-text" id="humidityVal">--%</text>
+            </svg>
+          </div>
+          <div class="sp-icon">💧</div>
+        </div>
+
+        <!-- Wind -->
+        <div class="stat-panel panel compass-panel">
+          <div class="sp-label">WIND</div>
+          <div class="compass-wrap">
+            <svg class="compass-svg" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+              <circle cx="40" cy="40" r="28" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+              <text x="40" y="10" text-anchor="middle" class="compass-dir">N</text>
+              <text x="40" y="74" text-anchor="middle" class="compass-dir">S</text>
+              <text x="9" y="44" text-anchor="middle" class="compass-dir">W</text>
+              <text x="71" y="44" text-anchor="middle" class="compass-dir">E</text>
+              <!-- needle -->
+              <g id="compassNeedle" transform="rotate(0 40 40)">
+                <polygon points="40,14 43,38 40,42 37,38" fill="url(#needleGrad)" opacity="0.95"/>
+                <polygon points="40,66 43,42 40,38 37,42" fill="rgba(255,255,255,0.2)"/>
+              </g>
+              <circle cx="40" cy="40" r="3" fill="#00f5ff"/>
+              <defs>
+                <linearGradient id="needleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#ff4444"/>
+                  <stop offset="100%" stop-color="#ff8888"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="wind-info">
+            <span class="wind-speed" id="windSpeed">-- km/h</span>
+            <span class="wind-dir-label" id="windDirLabel">--</span>
+          </div>
+        </div>
+
+        <!-- UV Index gauge -->
+        <div class="stat-panel panel gauge-panel">
+          <div class="sp-label">UV INDEX</div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 80 80">
+              <circle class="gauge-track" cx="40" cy="40" r="30" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/>
+              <circle class="gauge-fill" id="uvGauge" cx="40" cy="40" r="30"
+                fill="none" stroke="url(#uvGrad)" stroke-width="6"
+                stroke-dasharray="188.4" stroke-dashoffset="188.4"
+                stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              <defs>
+                <linearGradient id="uvGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#f9d423"/>
+                  <stop offset="100%" stop-color="#ff4e50"/>
+                </linearGradient>
+              </defs>
+              <text x="40" y="44" text-anchor="middle" class="gauge-text" id="uvVal">--</text>
+            </svg>
+          </div>
+          <div class="sp-sub" id="uvLabel">—</div>
+          <div class="sp-icon">☀️</div>
+        </div>
+
+        <!-- Visibility -->
+        <div class="stat-panel panel">
+          <div class="sp-label">VISIBILITY</div>
+          <div class="sp-value" id="visibility">--</div>
+          <div class="vis-bar-wrap"><div class="vis-bar" id="visBar"></div></div>
+          <div class="sp-icon">👁</div>
+        </div>
+
+        <!-- Pressure -->
+        <div class="stat-panel panel">
+          <div class="sp-label">PRESSURE</div>
+          <div class="sp-value" id="pressure">--</div>
+          <div class="sp-sub" id="pressureTrend">hPa</div>
+          <div class="sp-icon">🔵</div>
+        </div>
+
+      </section>
+
+      <!-- ── ROW 3: TEMPERATURE CHART ────────────────────── -->
+      <section class="chart-panel panel">
+        <div class="panel-header">
+          <h2 class="panel-title">24H TEMPERATURE WAVE</h2>
+          <div class="chart-legend">
+            <span class="legend-dot temp-dot"></span><span>Temperature</span>
+            <span class="legend-dot precip-dot"></span><span>Precipitation %</span>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="tempChart" class="temp-chart-canvas"></canvas>
+        </div>
+      </section>
+
+      <!-- ── ROW 4: HOURLY ───────────────────────────────── -->
+      <section class="panel hourly-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">HOURLY FORECAST</h2>
+        </div>
+        <div class="hourly-track" id="hourlyTrack"></div>
+      </section>
+
+      <!-- ── ROW 5: BOTTOM GRID ──────────────────────────── -->
+      <div class="bottom-grid">
+
+        <!-- 7-Day Forecast -->
+        <section class="panel forecast-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">7-DAY OUTLOOK</h2>
+          </div>
+          <div class="forecast-list" id="forecastList"></div>
+        </section>
+
+        <!-- Air Quality & Extra -->
+        <div class="side-panels">
+
+          <!-- AQI -->
+          <section class="panel aqi-panel">
+            <div class="panel-header"><h2 class="panel-title">AIR QUALITY</h2></div>
+            <div class="aqi-meter">
+              <div class="aqi-ring-wrap">
+                <svg class="aqi-ring-svg" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+                  <circle id="aqiRing" cx="50" cy="50" r="42"
+                    fill="none" stroke="url(#aqiGrad)" stroke-width="8"
+                    stroke-dasharray="263.9" stroke-dashoffset="263.9"
+                    stroke-linecap="round" transform="rotate(-90 50 50)"/>
+                  <defs>
+                    <linearGradient id="aqiGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#00f5a0"/>
+                      <stop offset="50%" stop-color="#f9d423"/>
+                      <stop offset="100%" stop-color="#ff4444"/>
+                    </linearGradient>
+                  </defs>
+                  <text x="50" y="46" text-anchor="middle" class="aqi-val" id="aqiValue">--</text>
+                  <text x="50" y="60" text-anchor="middle" class="aqi-sub-text" id="aqiLabel">AQI</text>
+                </svg>
+              </div>
+              <div class="aqi-details" id="aqiDetails">
+                <div class="aqi-row"><span>PM2.5</span><span id="pm25">--</span></div>
+                <div class="aqi-row"><span>PM10</span><span id="pm10">--</span></div>
+                <div class="aqi-row"><span>O₃</span><span id="ozone">--</span></div>
+                <div class="aqi-row"><span>NO₂</span><span id="no2">--</span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Sun & Moon -->
+          <section class="panel astro-panel">
+            <div class="panel-header"><h2 class="panel-title">ASTRONOMY</h2></div>
+            <div class="astro-content">
+              <div class="astro-item">
+                <div class="astro-icon">🌅</div>
+                <div class="astro-info">
+                  <div class="astro-label">SUNRISE</div>
+                  <div class="astro-val" id="sunrise">--:--</div>
+                </div>
+              </div>
+              <div class="astro-item">
+                <div class="astro-icon">🌇</div>
+                <div class="astro-info">
+                  <div class="astro-label">SUNSET</div>
+                  <div class="astro-val" id="sunset">--:--</div>
+                </div>
+              </div>
+              <div class="astro-item">
+                <div class="astro-icon" id="moonIcon">🌕</div>
+                <div class="astro-info">
+                  <div class="astro-label">MOON PHASE</div>
+                  <div class="astro-val" id="moonPhase">—</div>
+                </div>
+              </div>
+              <div class="astro-item">
+                <div class="astro-icon">💧</div>
+                <div class="astro-info">
+                  <div class="astro-label">PRECIPITATION</div>
+                  <div class="astro-val" id="precipitation">-- mm</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+    </main>
+
+  </div><!-- /nexus-app -->
+
+  <script src="app.js"></script>
+</body>
+</html>
