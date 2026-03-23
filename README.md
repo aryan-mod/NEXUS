@@ -144,7 +144,7 @@ git push origin feature/your-feature-name
 
 ## 🧑‍💻 Author
 
-**Aryan Kushwaha** - [https://github.com/aryan-mod](https://github.com/aryan-mod)
+**Aryan Kushwaha** - [https://github.com/aryanKDev](https://github.com/aryanKDev)
 
 ---
 
